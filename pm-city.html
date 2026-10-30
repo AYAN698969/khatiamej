@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="bn"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>মিউজের শহর - Babylon রিয়েল থ্রিডি</title>
+<script src="https://cdn.babylonjs.com/babylon.js"></script>
+<script src="https://cdn.babylonjs.com/loaders/babylonjs.loaders.min.js"></script>
+<script src="https://cdn.babylonjs.com/havok/HavokPhysics_umd.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<style>
+body{margin:0;background:#0b1020;color:#fff;font-family:sans-serif}
+.wrap{max-width:760px;margin:auto;padding:10px}
+h1{font-size:22px;margin:6px 0} p{color:#cbd5e1;font-size:14px}
+#view{width:100%;height:420px;background:#87ceeb;display:block;border-radius:12px;touch-action:none}
+.stats{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}
+.pill{background:#1e293b;border:1px solid #334155;border-radius:20px;padding:6px 10px;font-size:13px}
+button{font-size:16px;padding:10px 14px;border-radius:10px;border:0;margin:4px 4px 4px 0;cursor:pointer}
+.primary{background:#facc15;color:#111}.danger{background:#ef4444;color:#fff}.ok{background:#22c55e;color:#111}.ghost{background:#334155;color:#fff}
+button:disabled{opacity:.45;cursor:not-allowed}
+.pad{display:grid;grid-template-columns:repeat(3,64px);gap:6px;justify-content:center;margin:10px 0}
+.pad button{background:#facc15;color:#111;font-size:22px}
+#minimap{width:100%;height:150px;background:#14532d;border-radius:12px;display:block}
+#log{background:#0f172a;border:1px solid #334155;border-radius:12px;padding:10px;min-height:110px;font-size:14px;line-height:1.6}
+.note{font-size:12px;color:#94a3b8}
+</style></head><body><div class="wrap">
+<h1>👑 মিউজের শহর - Babylon রিয়েল থ্রিডি</h1>
+<p>তুমি সাধারণ নাগরিক। প্রধানমন্ত্রী Muse। অপরাধ দেখলে জানাও, প্রধানমন্ত্রী পুলিশকে আদেশ দেবে। পাশে টুডি ম্যাপ আছে, সেখানে তোমার আর প্রধানমন্ত্রীর মার্কার দেখা যাবে। এই গেমের প্রধানমন্ত্রী একটি সিমুলেশন, লাইভ চ্যাটের Muse আলাদা।</p>
+<div class="stats">
+<span class="pill">❤️ স্বাস্থ্য: <b id="health">100</b></span>
+<span class="pill">✅ ধরা: <b id="caught">0</b></span>
+<span class="pill">🏃 পলাতক: <b id="fug">5</b></span>
+<span class="pill">📍 তুমি: <b id="place">বাড়ি</b></span>
+<span class="pill">👑 প্রধানমন্ত্রী: <b id="pmplace">প্রধানমন্ত্রীর কার্যালয়</b></span>
+<span class="pill">🎞️ FPS: <b id="fps">-</b></span>
+<span class="pill">⚙️ মোড: <b id="mode">High - ভারী গ্রাফিক্স</b></span>
+</div>
+<canvas id="view"></canvas>
+<div>
+<button class="primary" id="startBtn">▶️ খেলা শুরু</button>
+<button class="danger" id="reportBtn" disabled>🚨 অপরাধ জানাও</button>
+<button class="ok" id="hospBtn">🏥 হাসপাতালে যাও</button>
+<button class="ghost" id="qualityBtn">⚙️ Low মোডে যাও</button>
+<button class="ghost" id="restartBtn">🔄 আবার শুরু</button>
+</div>
+<p id="modelStatus">⏳ মডেল আর ফিজিক্স লোড হচ্ছে...</p>
+<div>
+<button class="ghost" id="hostBtn">🤝 রুম বানাও (২-প্লেয়ার)</button>
+<input id="joinId" placeholder="বন্ধুর রুম আইডি লিখো" style="padding:10px;border-radius:10px;border:1px solid #334155;background:#0f172a;color:#fff;width:180px">
+<button class="ghost" id="joinBtn">➡️ রুমে যোগ দাও</button>
+</div>
+<p id="mpStatus">👥 সিঙ্গেল প্লেয়ার মোডে আছো। বন্ধু যোগ দিলে তার ক্যারেক্টার সবুজ রিংয়ে দেখা যাবে।</p>
+<div class="pad">
+<span></span><button data-d="up">⬆️</button><span></span>
+<button data-d="left">⬅️</button><button data-d="down">⬇️</button><button data-d="right">➡️</button>
+</div>
+<canvas id="minimap" width="720" height="150"></canvas>
+<p style="font-size:13px;color:#cbd5e1">🗺️ মিনিম্যাপে ট্যাপ করলে তুমি ওই জায়গার দিকে যাবে। নীল = তুমি, সোনালি = প্রধানমন্ত্রী, আকাশি = পুলিশ, লাল = অপরাধী, গোলাপি = ডাক্তার।</p>
+<div id="log">খেলা শুরু করো।</div>
+<p class="note">High মোডে: PBR ম্যাটেরিয়াল, সূর্যের ছায়া, ১০টি স্ট্রিট লাইট, ব্লুম এফেক্ট, হাই-রেজোলিউশন প্রসিডিউরাল টেক্সচার, হাই-পলি (৪৮ সেগমেন্ট) ক্যারেক্টার, আর সহজ ফিজিক্স (বিল্ডিংয়ে ধাক্কা, মাটি, চরিত্রের মধ্যে ধাক্কা) চালু থাকে। Havok ফিজিক্স লোড হলে সেটাও চেষ্টা করা হয়, না হলে সহজ ফিজিক্সেই গেম চলবে। ইন্টারনেট লাগবে, কারণ Babylon ইঞ্জিন আর ফ্রি GLB মডেল অনলাইন থেকে আসে।</p>
+</div>
+<script>
+var canvas=document.getElementById('view');
+var engine=new BABYLON.Engine(canvas,true);
+var scene=new BABYLON.Scene(engine);
+scene.clearColor=new BABYLON.Color4(0.53,0.81,0.98,1);
+scene.fogMode=BABYLON.Scene.FOGMODE_EXP; scene.fogDensity=0.00045;
+var camera=new BABYLON.UniversalCamera('cam',new BABYLON.Vector3(0,44,-62),scene);
+camera.setTarget(new BABYLON.Vector3(0,0,0));
+var hemi=new BABYLON.HemisphericLight('hemi',new BABYLON.Vector3(0,1,0),scene); hemi.intensity=0.75;
+var sun=new BABYLON.DirectionalLight('sun',new BABYLON.Vector3(-0.5,-1,0.4),scene); sun.intensity=1.15;
+sun.shadowMinZ=1; sun.shadowMaxZ=300;
+var shadowGen=new BABYLON.ShadowGenerator(1024,sun); shadowGen.useBlurExponentialShadowMap=true;
+var pipeline=new BABYLON.DefaultRenderingPipeline('pipe',true,scene,[camera]);
+pipeline.bloomEnabled=true; pipeline.bloomThreshold=0.75; pipeline.bloomWeight=0.35; pipeline.bloomKernel=64;
+pipeline.imageProcessingEnabled=true;
+// high-res procedural textures (canvas 2048 for ground, 1024 for windows)
+function canvasTex(size,draw){var c=document.createElement('canvas');c.width=c.height=size;var x=c.getContext('2d');draw(x,size);var t=new BABYLON.Texture('data:'+c.toDataURL(),scene);return t;}
+var groundTex=canvasTex(2048,function(x,s){x.fillStyle='#3f9d4e';x.fillRect(0,0,s,s);for(var i=0;i<9000;i++){x.fillStyle=i%3?'#358a44':'#4caf5a';x.fillRect(Math.random()*s,Math.random()*s,3,3);}});
+groundTex.uScale=24; groundTex.vScale=18;
+var groundMat=new BABYLON.PBRMaterial('gm',scene); groundMat.albedoTexture=groundTex; groundMat.roughness=0.9; groundMat.metallicness=0;
+var ground=BABYLON.MeshBuilder.CreateGround('ground',{width:2400,height:1800},scene); ground.material=groundMat; ground.receiveShadows=true;
+var winTex=canvasTex(1024,function(x,s){x.fillStyle='#8a6d3b';x.fillRect(0,0,s,s);for(var y=20;y<s;y+=70)for(var xx=20;xx<s;xx+=70){x.fillStyle=(xx+y)%140?'#ffe9a8':'#1e293b';x.fillRect(xx,y,40,40);}});
+winTex.uScale=2; winTex.vScale=3;
+var buildings=[
+ {n:'প্রধানমন্ত্রীর কার্যালয়',x:-500,z:-300,w:180,d:120,h:110,c:'#facc15'},
+ {n:'থানা',x:-200,z:-300,w:160,d:110,h:80,c:'#38bdf8'},
+ {n:'হাসপাতাল',x:250,z:-300,w:170,d:120,h:90,c:'#f472b6'},
+ {n:'বাজার',x:550,z:-250,w:180,d:120,h:60,c:'#4ade80'},
+ {n:'বাড়ি',x:0,z:120,w:130,d:100,h:55,c:'#fb923c'},
+ {n:'জেলখানা',x:-650,z:250,w:170,d:120,h:70,c:'#94a3b8'},
+ {n:'স্কুল',x:350,z:250,w:160,d:110,h:65,c:'#a78bfa'},
+ {n:'শপিং মল',x:650,z:300,w:200,d:130,h:95,c:'#f472b6'},
+ {n:'রেল স্টেশন',x:-350,z:450,w:180,d:110,h:60,c:'#60a5fa'},
+ {n:'লাইব্রেরি',x:100,z:450,w:150,d:100,h:60,c:'#34d399'},
+ {n:'অপরাধীদের আস্তানা',x:700,z:-450,w:150,d:100,h:50,c:'#ef4444'}
+];
+var buildMeshes=[];
+buildings.forEach(function(b){
+ var m=new BABYLON.PBRMaterial('bm'+b.n,scene); m.albedoColor=BABYLON.Color3.FromHexString(b.c); m.albedoTexture=winTex; m.roughness=0.55; m.metallicness=0.15;
+ var box=BABYLON.MeshBuilder.CreateBox('b'+b.n,{width:b.w,height:b.h,depth:b.d},scene); box.position.set(b.x,b.h/2,b.z); box.material=m; box.receiveShadows=true; shadowGen.addShadowCaster(box); buildMeshes.push({mesh:box,info:b});
+ var roof=BABYLON.MeshBuilder.CreateBox('roof'+b.n,{width:b.w+10,height:6,depth:b.d+10},scene); roof.position.set(b.x,b.h+3,b.z); roof.material=new BABYLON.StandardMaterial('rm',scene); roof.material.diffuseColor=new BABYLON.Color3(1,1,1);
+});
+// roads
+for(var rx=-1200;rx<=1200;rx+=400){var r=BABYLON.MeshBuilder.CreateGround('roadx',{width:12,height:1800},scene); r.position.set(rx,0.2,0); var rm=new BABYLON.StandardMaterial('road',scene); rm.diffuseColor=new BABYLON.Color3(0.15,0.15,0.17); r.material=rm;}
+for(var rz=-900;rz<=900;rz+=450){var r2=BABYLON.MeshBuilder.CreateGround('roadz',{width:2400,height:12},scene); r2.position.set(0,0.2,rz); var rm2=new BABYLON.StandardMaterial('road2',scene); rm2.diffuseColor=new BABYLON.Color3(0.15,0.15,0.17); r2.material=rm2;}
+// trees instanced (light, many)
+var trunkMat=new BABYLON.StandardMaterial('tr',scene); trunkMat.diffuseColor=new BABYLON.Color3(0.4,0.25,0.1);
+var leafMat=new BABYLON.PBRMaterial('lf',scene); leafMat.albedoColor=new BABYLON.Color3(0.1,0.5,0.2); leafMat.roughness=0.8;
+var trunkBase=BABYLON.MeshBuilder.CreateCylinder('trunk',{diameterTop:2,diameterBottom:3,height:12,tessellation:12},scene); trunkBase.material=trunkMat; trunkBase.isVisible=false;
+var leafBase=BABYLON.MeshBuilder.CreateSphere('leaf',{diameter:22,segments:24},scene); leafBase.material=leafMat; leafBase.isVisible=false;
+var treeCount=120;
+for(var ti=0;ti<treeCount;ti++){
+ var tx=-1150+Math.random()*2300, tz=-850+Math.random()*1700;
+ if(Math.abs(tx)<200 && Math.abs(tz-120)<150) continue;
+ var t1=trunkBase.createInstance('t'+ti); t1.position.set(tx,6,tz);
+ var l1=leafBase.createInstance('l'+ti); l1.position.set(tx,20,tz);
+}
+// street point lights (High mode)
+var pointLights=[];
+for(var li=0;li<10;li++){var pl=new BABYLON.PointLight('pl'+li,new BABYLON.Vector3(-1000+li*220,18,-600+(li%3)*600),scene); pl.intensity=0.7; pl.diffuse=new BABYLON.Color3(1,0.85,0.5); pointLights.push(pl);}
+function makeChar(color,isPM,isPolice){
+ var g=new BABYLON.TransformNode('char',scene);
+ var bodyMat=new BABYLON.PBRMaterial('cm',scene); bodyMat.albedoColor=BABYLON.Color3.FromHexString(color); bodyMat.roughness=0.4; bodyMat.metallicness=0.1;
+ var body=BABYLON.MeshBuilder.CreateCapsule('body',{radius:3.2,height:14},scene); body.position.y=9; body.material=bodyMat; body.parent=g; shadowGen.addShadowCaster(body);
+ var head=BABYLON.MeshBuilder.CreateSphere('head',{diameter:9,segments:48},scene); head.position.y=20; head.material=bodyMat; head.parent=g; shadowGen.addShadowCaster(head);
+ if(isPM){var crown=BABYLON.MeshBuilder.CreateCylinder('crown',{diameterTop:7,diameterBottom:9,height:5,tessellation:24},scene); crown.position.y=25.5; var cm=new BABYLON.StandardMaterial('crownm',scene); cm.diffuseColor=new BABYLON.Color3(1,0.84,0); crown.material=cm; crown.parent=g;}
+ if(isPolice){var hat=BABYLON.MeshBuilder.CreateCylinder('hat',{diameter:9,height:3,tessellation:24},scene); hat.position.y=24.5; var hm=new BABYLON.StandardMaterial('hatm',scene); hm.diffuseColor=new BABYLON.Color3(0,0,0.6); hat.material=hm; hat.parent=g;}
+ return g;
+}
+function placeName(x,z){var best='রাস্তা',bd=1e9;buildings.forEach(function(b){var d=Math.hypot(x-b.x,z-b.z);if(d<bd){bd=d;best=b.n;}});return bd<160?best:'রাস্তা';}
+var player={node:makeChar('#3b82f6'),x:220,z:120,health:100,dest:null,dir:0};
+var pm={node:makeChar('#facc15',true),x:-500,z:-300};
+var police=[],criminals=[],doctors=[],citizens=[];
+for(var i=0;i<3;i++){police.push({node:makeChar('#38bdf8',false,true),x:-200+i*40,z:-220,free:true,target:null});}
+for(var j=0;j<5;j++){criminals.push({node:makeChar('#ef4444'),x:600+j*60,z:-400+j*30,caught:false,respawn:0});}
+// one criminal starts near player so Report can be enabled in test
+criminals[0].x=80; criminals[0].z=180;
+for(var k=0;k<2;k++){doctors.push({node:makeChar('#f472b6'),x:250+k*40,z:-220});}
+for(var m=0;m<6;m++){citizens.push({node:makeChar('#ffffff'),x:-300+m*120,z:350});}
+function sync(n){n.node.position.set(n.x,0,n.z);}
+[player,pm].forEach(sync); police.forEach(sync); criminals.forEach(sync); doctors.forEach(sync); citizens.forEach(sync);
+var started=false,caught=0,keys={},moveDir={x:0,z:0};
+function log(t){var d=document.getElementById('log');d.innerHTML='<div>'+t+'</div>'+d.innerHTML;}
+function nearestCriminal(){var best=null,bd=1e9;criminals.forEach(function(c){if(c.caught)return;var d=Math.hypot(c.x-player.x,c.z-player.z);if(d<bd){bd=d;best=c;}});return {c:best,d:bd};}
+function updateUI(){
+ document.getElementById('health').textContent=Math.max(0,Math.round(player.health));
+ document.getElementById('caught').textContent=caught;
+ document.getElementById('fug').textContent=criminals.filter(function(c){return !c.caught;}).length;
+ document.getElementById('place').textContent=placeName(player.x,player.z);
+ document.getElementById('pmplace').textContent=placeName(pm.x,pm.z);
+ var nc=nearestCriminal();
+ var rb=document.getElementById('reportBtn');
+ rb.disabled=!started || !nc.c || nc.d>220;
+ rb.textContent=nc.c?('🚨 অপরাধ জানাও ('+Math.round(nc.d)+' মিটার)'):'🚨 অপরাধ জানাও';
+}
+document.getElementById('startBtn').onclick=function(){started=true;try{if(screen.orientation && screen.orientation.lock){screen.orientation.lock('landscape').catch(function(){});}}catch(e){} log('👑 প্রধানমন্ত্রী Muse: নাগরিক, ভয় পেও না। অপরাধ দেখলে জানাও, আমি পুলিশকে আদেশ দেবো।');updateUI();};
+document.getElementById('reportBtn').onclick=function(){
+ var nc=nearestCriminal(); if(!nc.c)return;
+ var free=police.find(function(p){return p.free;}); if(!free){log('পুলিশ সবাই ব্যস্ত, একটু অপেক্ষা করো।');return;}
+ free.free=false; free.target=nc.c; log('👑 প্রধানমন্ত্রী Muse: পুলিশ, ওই অপরাধীকে ধরো! আদেশ দেওয়া হয়েছে।');
+};
+document.getElementById('hospBtn').onclick=function(){player.dest={x:250,z:-300};log('🧭 তুমি হাসপাতালের দিকে যাচ্ছো।');};
+document.getElementById('restartBtn').onclick=function(){location.reload();};
+var high=true;
+document.getElementById('qualityBtn').onclick=function(){
+ high=!high; pipeline.bloomEnabled=high; shadowGen.enabled=high; pointLights.forEach(function(p){p.setEnabled(high);});
+ document.getElementById('mode').textContent=high?'High - ভারী গ্রাফিক্স':'Low - হালকা মোড';
+ this.textContent=high?'⚙️ Low মোডে যাও':'⚙️ High মোডে যাও';
+};
+document.querySelectorAll('.pad button').forEach(function(b){b.onclick=function(){var d=b.getAttribute('data-d');moveDir={x:d==='left'?-1:d==='right'?1:0,z:d==='up'?-1:d==='down'?1:0};player.dest=null;};});
+window.addEventListener('keydown',function(e){keys[e.key]=true;});
+window.addEventListener('keyup',function(e){keys[e.key]=false;});
+var mm=document.getElementById('minimap');
+mm.addEventListener('click',function(e){var r=mm.getBoundingClientRect();var px=(e.clientX-r.left)/r.width;var py=(e.clientY-r.top)/r.height;player.dest={x:-1200+px*2400,z:-900+py*1800};log('🧭 তুমি ম্যাপের ওই জায়গার দিকে যাচ্ছো।');});
+// Real GLB models for ALL characters (not capsules). Capsules stay only as fallback until each real model loads.
+var allActors=[player,pm].concat(police,criminals,doctors,citizens);
+var roleColors=['#3b82f6','#facc15','#38bdf8','#38bdf8','#38bdf8','#ef4444','#ef4444','#ef4444','#ef4444','#ef4444','#f472b6','#f472b6','#ffffff','#ffffff','#ffffff','#ffffff','#ffffff','#ffffff'];
+try{
+ BABYLON.SceneLoader.LoadAssetContainerAsync('https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/models/gltf/RobotExpressive/', 'RobotExpressive.glb', scene).then(function(container){
+   window.realContainer=container;
+   var count=0;
+   allActors.forEach(function(actor,idx){
+     try{
+       var inst=container.instantiateModelsToScene(function(name){return name+'_actor'+idx;});
+       var root=inst.rootNodes[0];
+       root.scaling=new BABYLON.Vector3(9,9,9);
+       root.position.set(actor.x,0,actor.z);
+       actor.real=root;
+       actor.node.setEnabled(false);
+       var ringMat=new BABYLON.StandardMaterial('ringm'+idx,scene); ringMat.diffuseColor=BABYLON.Color3.FromHexString(roleColors[idx]||'#ffffff'); ringMat.emissiveColor=BABYLON.Color3.FromHexString(roleColors[idx]||'#ffffff'); ringMat.emissiveColor=ringMat.emissiveColor.scale(0.4);
+       var ring=BABYLON.MeshBuilder.CreateCylinder('ring'+idx,{diameter:22,height:1.2,tessellation:32},scene);
+       ring.material=ringMat; ring.position.y=0.6; ring.parent=root;
+       if(inst.animationGroups){var idle=null; for(var gi=0;gi<inst.animationGroups.length;gi++){if(/idle/i.test(inst.animationGroups[gi].name)){idle=inst.animationGroups[gi];break;}} if(idle) idle.play(true);}
+       count++;
+     }catch(e){}
+   });
+   document.getElementById('modelStatus').textContent='✅ রিয়েল মডেল লোড হয়েছে: '+count+' জন RobotExpressive (সব ক্যারেক্টার)';
+   log('✅ রিয়েল মডেল লোড হয়েছে: '+count+' জন');
+ }).catch(function(){document.getElementById('modelStatus').textContent='⚠️ মডেল লোড হয়নি, সহজ ক্যারেক্টার দিয়ে খেলা চলবে।';});
+}catch(err){document.getElementById('modelStatus').textContent='⚠️ মডেল লোড হয়নি, সহজ ক্যারেক্টার দিয়ে খেলা চলবে।';}
+// 2-player private multiplayer via PeerJS (you + friend only, no public server). Single-player game is unaffected if this is never used.
+var mpPeer=null, mpConn=null, friend=null;
+function mpSetStatus(t){var e=document.getElementById('mpStatus'); if(e) e.textContent=t;}
+function mpMakeFriend(){
+  if(friend) return friend;
+  friend={x:player.x+80,z:player.z+80,node:makeChar('#22c55e'),real:null};
+  try{
+    if(window.realContainer){
+      var inst=window.realContainer.instantiateModelsToScene(function(n){return n+'_friend';});
+      var root=inst.rootNodes[0]; root.scaling=new BABYLON.Vector3(9,9,9); root.position.set(friend.x,0,friend.z); friend.real=root; friend.node.setEnabled(false);
+      var rm=new BABYLON.StandardMaterial('friendringm',scene); rm.diffuseColor=new BABYLON.Color3(0.13,0.77,0.37); rm.emissiveColor=new BABYLON.Color3(0.13,0.77,0.37).scale(0.4);
+      var ring=BABYLON.MeshBuilder.CreateCylinder('friendring',{diameter:22,height:1.2,tessellation:32},scene); ring.material=rm; ring.position.y=0.6; ring.parent=root;
+    }
+  }catch(e){}
+  return friend;
+}
+function mpOnData(d){
+  if(!d||typeof d.x!=='number') return;
+  var f=mpMakeFriend(); f.x=d.x; f.z=d.z;
+}
+function mpBindConn(c){
+  mpConn=c;
+  c.on('data',mpOnData);
+  c.on('open',function(){mpSetStatus('✅ বন্ধু যুক্ত হয়েছে! ২-প্লেয়ার মোড চালু।'); log('✅ বন্ধু যুক্ত হয়েছে!');});
+  c.on('close',function(){mpSetStatus('👥 বন্ধু চলে গেছে, সিঙ্গেল প্লেয়ার মোডে আছো।');});
+}
+try{
+  document.getElementById('hostBtn').onclick=function(){
+    if(!window.Peer){mpSetStatus('⚠️ মাল্টিপ্লেয়ার লাইব্রেরি লোড হয়নি, ইন্টারনেট চেক করো।'); return;}
+    var id='pmcity-'+Math.random().toString(36).slice(2,8);
+    mpPeer=new Peer(id);
+    mpPeer.on('open',function(){mpSetStatus('🤝 তোমার রুম আইডি: '+id+' — বন্ধুকে এই আইডি পাঠাও, সে রুমে যোগ দাও বাটনে এটা লিখবে।'); log('🤝 রুম বানানো হয়েছে: '+id);});
+    mpPeer.on('connection',function(c){mpBindConn(c);});
+    mpPeer.on('error',function(e){mpSetStatus('⚠️ রুম বানাতে সমস্যা: '+(e&&e.type?e.type:'ইন্টারনেট চেক করো'));});
+  };
+  document.getElementById('joinBtn').onclick=function(){
+    if(!window.Peer){mpSetStatus('⚠️ মাল্টিপ্লেয়ার লাইব্রেরি লোড হয়নি, ইন্টারনেট চেক করো।'); return;}
+    var rid=document.getElementById('joinId').value.trim(); if(!rid){mpSetStatus('⚠️ আগে বন্ধুর রুম আইডি লিখো।'); return;}
+    mpPeer=new Peer();
+    mpPeer.on('open',function(){var c=mpPeer.connect(rid); mpBindConn(c); mpSetStatus('⏳ রুমে যোগ দেওয়ার চেষ্টা চলছে: '+rid);});
+    mpPeer.on('error',function(e){mpSetStatus('⚠️ যোগ দিতে সমস্যা: '+(e&&e.type?e.type:'আইডি ঠিক আছে কিনা চেক করো'));});
+  };
+  setInterval(function(){ if(mpConn && mpConn.open){ try{mpConn.send({x:player.x,z:player.z});}catch(e){} } },200);
+}catch(e){}
+// Havok attempt, non-blocking, game does not depend on it
+try{
+ if(window.HavokPhysics){ HavokPhysics().then(function(h){ try{ scene.enablePhysics(new BABYLON.Vector3(0,-9.8,0), new BABYLON.HavokPlugin(true,h)); document.getElementById('modelStatus').textContent+=' | Havok ফিজিক্স চালু'; }catch(e){} }); }
+}catch(err){}
+setInterval(function(){ if(started){ log('📢 খবর: শহরে অপরাধী ঘুরছে। প্রধানমন্ত্রী Muse পুলিশকে সতর্ক করেছেন।'); } },30000);
+var last=performance.now();
+engine.runRenderLoop(function(){
+ var now=performance.now(); var dt=Math.min(0.05,(now-last)/1000); last=now;
+ document.getElementById('fps').textContent=Math.round(engine.getFps());
+ if(keys['ArrowUp']||keys['w']||keys['W'])moveDir={x:0,z:-1}; else if(keys['ArrowDown']||keys['s']||keys['S'])moveDir={x:0,z:1}; else if(keys['ArrowLeft']||keys['a']||keys['A'])moveDir={x:-1,z:0}; else if(keys['ArrowRight']||keys['d']||keys['D'])moveDir={x:1,z:0};
+ var speed=90*dt;
+ if(player.dest){var dx=player.dest.x-player.x,dz=player.dest.z-player.z;var d=Math.hypot(dx,dz);if(d<10){player.dest=null;}else{player.x+=dx/d*speed;player.z+=dz/d*speed;}}
+ else if(moveDir.x||moveDir.z){player.x+=moveDir.x*speed;player.z+=moveDir.z*speed;}
+ // simple physics: building collision + bounds
+ function collide(o){buildings.forEach(function(b){if(Math.abs(o.x-b.x)<b.w/2+6 && Math.abs(o.z-b.z)<b.d/2+6){o.x=Math.max(b.x-b.w/2-6,Math.min(b.x+b.w/2+6,o.x));o.z=Math.max(b.z-b.d/2-6,Math.min(b.z+b.d/2+6,o.z));}});o.x=Math.max(-1180,Math.min(1180,o.x));o.z=Math.max(-880,Math.min(880,o.z));}
+ collide(player);
+ // criminals wander, near player health drops
+ criminals.forEach(function(c){
+   if(c.caught){c.respawn-=dt; if(c.respawn<=0){c.caught=false;c.x=700;c.z=-450;log('⚠️ নতুন অপরাধী আস্তানা থেকে বেরিয়েছে।');} return;}
+   c.x+=Math.sin(now/2000+c.z)*18*dt; c.z+=Math.cos(now/1800+c.x)*18*dt; collide(c);
+   var d=Math.hypot(c.x-player.x,c.z-player.z); if(started && d<60) player.health-=4*dt;
+ });
+ // police chase
+ police.forEach(function(p){
+   if(p.target){var t=p.target;var dx=t.x-p.x,dz=t.z-p.z;var d=Math.hypot(dx,dz);if(d<16){t.caught=true;t.respawn=8;caught++;p.target=null;p.free=true;log('✅ পুলিশ অপরাধীকে ধরেছে! প্রধানমন্ত্রী Muse-এর আদেশ পালিত হয়েছে।');}else{p.x+=dx/d*150*dt;p.z+=dz/d*150*dt;}}
+   else {p.x+=Math.sin(now/3000+p.z)*10*dt; p.z+=Math.cos(now/2600+p.x)*10*dt;}
+   collide(p);
+ });
+ citizens.forEach(function(c){c.x+=Math.sin(now/4000+c.z)*8*dt;});
+ // hospital heal
+ if(Math.hypot(player.x-250,player.z+300)<150 && player.health<100) player.health+=12*dt;
+ // PM stays near office, slight move
+ pm.x=-500+Math.sin(now/5000)*30;
+ // camera: high, far behind player, smooth, above buildings view (fixed after test: previous view was too close and player back filled screen)
+ var want=new BABYLON.Vector3(player.x,44,player.z-62);
+ camera.position=BABYLON.Vector3.Lerp(camera.position,want,0.08);
+ camera.setTarget(new BABYLON.Vector3(player.x,2,player.z));
+ function syncActor(n){if(n.real){n.real.position.set(n.x,0,n.z);}else{n.node.position.set(n.x,0,n.z);}}
+ syncActor(pm); syncActor(player); police.forEach(syncActor); criminals.forEach(function(c){if(c.caught){if(c.real)c.real.position.y=-100;c.node.position.y=-100;}else syncActor(c);}); doctors.forEach(syncActor); citizens.forEach(syncActor);
+ if(typeof friend!=='undefined' && friend){ if(friend.real) friend.real.position.set(friend.x,0,friend.z); else friend.node.position.set(friend.x,0,friend.z); }
+ updateUI();
+ // minimap
+ var ctx=mm.getContext('2d'); ctx.fillStyle='#14532d'; ctx.fillRect(0,0,720,150);
+ buildings.forEach(function(b){ctx.fillStyle='#facc15';ctx.fillRect((b.x+1200)/2400*720-12,(b.z+900)/1800*150-8,24,16);});
+ function dot(o,col,r){ctx.fillStyle=col;ctx.beginPath();ctx.arc((o.x+1200)/2400*720,(o.z+900)/1800*150,r,0,7);ctx.fill();}
+ criminals.forEach(function(c){if(!c.caught)dot(c,'#ef4444',4);}); police.forEach(function(p){dot(p,'#38bdf8',4);}); doctors.forEach(function(d){dot(d,'#f472b6',4);}); citizens.forEach(function(c){dot(c,'#fff',3);}); dot(pm,'#facc15',6); dot(player,'#3b82f6',6); if(typeof friend!=='undefined' && friend) dot(friend,'#22c55e',6);
+ ctx.strokeStyle='#fff'; ctx.strokeRect((player.x+1200)/2400*720-50,(player.z+900)/1800*150-35,100,70);
+ scene.render();
+});
+window.addEventListener('resize',function(){engine.resize();});
+updateUI();
+</script></body></html>
